@@ -7,3 +7,23 @@
     @apply bg-gray-50 text-gray-900;
   }
 }
+
+@layer utilities {
+  /* Used across the app; Tailwind 3 has no built-in for these. */
+  .pb-safe {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.5rem);
+  }
+  .hide-scrollbar,
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .hide-scrollbar::-webkit-scrollbar,
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+html,
+body {
+  overscroll-behavior-y: none;
+}

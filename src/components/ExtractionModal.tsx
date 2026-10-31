@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Copy, Check } from 'lucide-react';
+import { X, Copy, Check, Share2 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useStore } from '../store/useStore';
 import { generateOrderText } from '../lib/orderGenerator';
@@ -79,12 +79,22 @@ export function ExtractionModal({ isOpen, onClose, initialCategoriaId }: Extract
     setSelectedCats(new Set(store.categorias.map(c => c.id)));
   };
 
+  const canShare = typeof navigator !== 'undefined' && 'share' in navigator;
+  const handleShare = async () => {
+    try {
+      // Opens the phone's share sheet: WhatsApp, Telegram, email…
+      await navigator.share({ text });
+    } catch {
+      /* cancelled or not allowed: nothing to do */
+    }
+  };
+
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
+    } catch {
       // Fallback para navegadores antiguos
       const textArea = document.getElementById('pedido-textarea') as HTMLTextAreaElement;
       if (textArea) {
@@ -99,13 +109,21 @@ export function ExtractionModal({ isOpen, onClose, initialCategoriaId }: Extract
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 sm:p-6 backdrop-blur-sm transition-opacity">
-      <div className="bg-white rounded-2xl w-full max-w-lg h-full max-h-[85vh] sm:h-auto sm:max-h-[800px] flex flex-col overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 sm:p-6"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Generar pedido"
+        className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-lg h-[92dvh] sm:h-auto sm:max-h-[800px] flex flex-col overflow-hidden shadow-2xl"
+      >
         
         {/* Cabecera */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50/50">
           <h2 className="text-lg font-bold text-gray-800">Generar Pedido</h2>
-          <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-full transition-colors">
+          <button type="button" onClick={onClose} aria-label="Cerrar" className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-full transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -116,13 +134,14 @@ export function ExtractionModal({ isOpen, onClose, initialCategoriaId }: Extract
           <div className="px-4 py-3 border-b border-gray-100">
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm font-semibold text-gray-600">Incluir categorías:</span>
-              <button onClick={selectAll} className="text-xs text-blue-600 font-medium hover:underline">
+              <button type="button" onClick={selectAll} className="text-xs text-blue-600 font-medium px-2 py-1">
                 Seleccionar todas
               </button>
             </div>
             <div className="flex flex-wrap gap-2">
-              {store.categorias.map(cat => (
+              {[...store.categorias].sort((a, b) => a.orden - b.orden).map(cat => (
                 <button
+                  type="button"
                   key={cat.id}
                   onClick={() => toggleCategory(cat.id)}
                   className={clsx(
@@ -143,6 +162,7 @@ export function ExtractionModal({ isOpen, onClose, initialCategoriaId }: Extract
             <div className="flex px-4 pt-2 border-b border-gray-200 bg-gray-50 overflow-x-auto hide-scrollbar shrink-0">
               {availableProviders.map(prov => (
                 <button
+                  type="button"
                   key={prov.id}
                   onClick={() => setActiveProvider(prov.id)}
                   className={clsx(
@@ -177,29 +197,42 @@ export function ExtractionModal({ isOpen, onClose, initialCategoriaId }: Extract
         </div>
 
         {/* Pie */}
-        <div className="p-4 border-t border-gray-100 bg-white flex gap-3 pb-safe">
+        <div className="p-3 border-t border-gray-100 bg-white flex gap-2" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }}>
           <button
+            type="button"
             onClick={onClose}
-            className="flex-1 px-4 py-3 rounded-xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+            className="px-4 py-3 rounded-xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
           >
             Cerrar
           </button>
+          {canShare && (
+            <button
+              type="button"
+              onClick={handleShare}
+              disabled={!text || text === 'No hay productos con cantidad'}
+              className="flex-1 px-3 py-3 rounded-xl font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 flex items-center justify-center disabled:opacity-40"
+            >
+              <Share2 className="w-5 h-5 mr-1.5" />
+              Compartir
+            </button>
+          )}
           <button
+            type="button"
             onClick={handleCopy}
             disabled={!text || text === 'No hay productos con cantidad'}
             className={clsx(
-              "flex-[2] px-4 py-3 rounded-xl font-bold text-white flex items-center justify-center transition-all",
+              "flex-1 px-3 py-3 rounded-xl font-bold text-white flex items-center justify-center transition-all",
               copied ? "bg-green-500" : "bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-blue-300 disabled:cursor-not-allowed"
             )}
           >
             {copied ? (
               <>
-                <Check className="w-5 h-5 mr-2" />
+                <Check className="w-5 h-5 mr-1.5" />
                 ¡Copiado!
               </>
             ) : (
               <>
-                <Copy className="w-5 h-5 mr-2" />
+                <Copy className="w-5 h-5 mr-1.5" />
                 Copiar
               </>
             )}

@@ -1,0 +1,14 @@
+# Netlify reads this when the site is linked to the GitHub repo
+# (Site configuration → Build & deploy → Link repository).
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# The service worker must always be fetched fresh so updates reach the phone.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"

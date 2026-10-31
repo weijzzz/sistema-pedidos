@@ -11,9 +11,9 @@ interface CategoryTabsProps {
 
 export function CategoryTabs({ categorias, productos, activeCategoriaId, onSelect }: CategoryTabsProps) {
   return (
-    <div className="w-full bg-white border-b border-gray-200 overflow-x-auto hide-scrollbar sticky top-0 z-20 shadow-sm">
+    <div className="w-full shrink-0 bg-white border-b border-gray-200 overflow-x-auto hide-scrollbar sticky top-0 z-20 shadow-sm" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
       <div className="flex px-2 space-x-1 min-w-max">
-        {categorias.sort((a,b) => a.orden - b.orden).map((cat) => {
+        {categorias.map((cat) => {
           const isActive = cat.id === activeCategoriaId;
           const productosEnCategoria = productos.filter(p => p.categoriaId === cat.id && p.cantidad !== 0 && p.cantidad !== '');
           const badgeCount = productosEnCategoria.length;
@@ -21,7 +21,12 @@ export function CategoryTabs({ categorias, productos, activeCategoriaId, onSelec
           return (
             <button
               key={cat.id}
-              onClick={() => onSelect(cat.id)}
+              type="button"
+              aria-current={isActive ? 'page' : undefined}
+              onClick={(e) => {
+                onSelect(cat.id);
+                e.currentTarget.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
+              }}
               className={clsx(
                 "relative px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap outline-none flex items-center border-b-2",
                 isActive 
