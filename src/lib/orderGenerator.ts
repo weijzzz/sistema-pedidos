@@ -1,4 +1,4 @@
-import { AppState, Proveedor } from '../types';
+import { AppState } from '../types';
 import { renderTemplate, pluralize } from './templates';
 
 export function generateOrderText(

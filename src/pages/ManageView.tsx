@@ -16,10 +16,12 @@ export function ManageView({ onBack }: ManageViewProps) {
   const [activeTab, setActiveTab] = useState<TabType>('productos');
 
   return (
-    <div className="flex flex-col h-full bg-gray-50 max-w-md mx-auto shadow-lg overflow-hidden relative">
+    <div className="flex flex-col h-[100dvh] bg-gray-50 max-w-md mx-auto shadow-lg overflow-hidden relative">
       {/* Header */}
-      <div className="h-14 bg-white border-b border-gray-200 flex items-center px-4 shrink-0 shadow-sm z-20">
+      <div className="h-14 bg-white border-b border-gray-200 flex items-center px-4 shrink-0 shadow-sm z-20 box-content" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
         <button 
+          type="button"
+          aria-label="Volver"
           onClick={onBack}
           className="p-2 -ml-2 mr-2 text-gray-600 hover:text-gray-900 rounded-full hover:bg-gray-100 transition-colors"
         >
@@ -57,7 +59,7 @@ export function ManageView({ onBack }: ManageViewProps) {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto bg-gray-50 relative">
+      <div className="flex-1 overflow-y-auto overscroll-contain bg-gray-50 relative">
         {activeTab === 'productos' && <ManageProducts />}
         {activeTab === 'categorias' && <ManageCategories />}
         {activeTab === 'pegar' && <BulkPaste />}
@@ -70,7 +72,9 @@ export function ManageView({ onBack }: ManageViewProps) {
 function TabButton({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string }) {
   return (
     <button
+      type="button"
       onClick={onClick}
+      aria-current={active ? 'page' : undefined}
       className={clsx(
         "flex-1 flex flex-col items-center justify-center py-2.5 min-w-[80px] transition-colors border-b-2",
         active ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"

@@ -8,13 +8,14 @@ interface ProductListProps {
   productos: Producto[];
   subgrupos: Subgrupo[];
   unidadPorDefecto: string;
+  emptyText?: string;
 }
 
 type ListItem = 
   | { type: 'subgrupo'; id: string; nombre: string; count: number }
   | { type: 'producto'; producto: Producto };
 
-export function ProductList({ productos, subgrupos, unidadPorDefecto }: ProductListProps) {
+export function ProductList({ productos, subgrupos, unidadPorDefecto, emptyText = 'No hay productos que coincidan' }: ProductListProps) {
   const [collapsedSubgrupos, setCollapsedSubgrupos] = useState<Set<string>>(new Set());
   
   const toggleCollapse = (id: string) => {
@@ -68,13 +69,13 @@ export function ProductList({ productos, subgrupos, unidadPorDefecto }: ProductL
   if (productos.length === 0) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-gray-500">
-        <p className="text-lg mb-2">No hay productos que coincidan</p>
+        <p className="text-base mb-2">{emptyText}</p>
       </div>
     );
   }
 
   return (
-    <div ref={parentRef} className="flex-1 overflow-y-auto">
+    <div ref={parentRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
       <div
         style={{
           height: `${rowVirtualizer.getTotalSize()}px`,
@@ -99,8 +100,10 @@ export function ProductList({ productos, subgrupos, unidadPorDefecto }: ProductL
               }}
             >
               {item.type === 'subgrupo' ? (
-                <div 
-                  className="flex items-center justify-between px-4 h-full bg-gray-100 border-b border-gray-200 cursor-pointer sticky top-0 z-10 font-bold text-gray-700 shadow-sm text-sm uppercase tracking-wider"
+                <button
+                  type="button"
+                  aria-expanded={!collapsedSubgrupos.has(item.id)}
+                  className="w-full flex items-center justify-between px-4 h-10 bg-gray-100 border-b border-gray-200 cursor-pointer font-bold text-gray-700 shadow-sm text-sm uppercase tracking-wider"
                   onClick={() => toggleCollapse(item.id)}
                 >
                   <div className="flex items-center">
@@ -116,7 +119,7 @@ export function ProductList({ productos, subgrupos, unidadPorDefecto }: ProductL
                       {item.count}
                     </span>
                   )}
-                </div>
+                </button>
               ) : (
                 <ProductRow 
                   producto={item.producto} 

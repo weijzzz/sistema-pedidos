@@ -2,21 +2,40 @@ import React, { useState } from 'react';
 import { Settings, ClipboardList, Trash2, MoreVertical, Check, Plus, Minus, ArrowLeft } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useStore } from '../store/useStore';
+import type { UndoInfo } from './UndoToast';
 
 interface BottomBarProps {
   onExtract: () => void;
   onManage: () => void;
   activeCategoriaId: string;
+  /** Offer «Deshacer» after clearing quantities. */
+  onUndoable?: (info: UndoInfo) => void;
 }
 
-export function BottomBar({ onExtract, onManage, activeCategoriaId }: BottomBarProps) {
+export function BottomBar({ onExtract, onManage, activeCategoriaId, onUndoable }: BottomBarProps) {
   const { 
     clearProductosByCategoria, 
     setUnidadAllInCategoria, 
     removeUnidadAllInCategoria,
+    restoreCantidades,
     categorias,
     ajustes
   } = useStore();
+
+  // Remember what had a quantity, so a mistaken «Poner a 0» can be undone.
+  const clearWithUndo = (categoriaId?: string) => {
+    const snapshot = useStore
+      .getState()
+      .productos.filter((p) => (!categoriaId || p.categoriaId === categoriaId) && p.cantidad !== 0 && p.cantidad !== '')
+      .map((p) => [p.id, p.cantidad] as [string, number | string]);
+    clearProductosByCategoria(categoriaId);
+    if (snapshot.length > 0) {
+      onUndoable?.({
+        message: `${snapshot.length} producto(s) puestos a 0`,
+        onUndo: () => restoreCantidades(snapshot),
+      });
+    }
+  };
   
   const [showMenu, setShowMenu] = useState(false);
   const [showUnitSelector, setShowUnitSelector] = useState(false);
@@ -26,7 +45,7 @@ export function BottomBar({ onExtract, onManage, activeCategoriaId }: BottomBarP
 
   const handleClear = () => {
     if (confirmClear) {
-      clearProductosByCategoria(activeCategoriaId);
+      clearWithUndo(activeCategoriaId);
       setConfirmClear(false);
     } else {
       setConfirmClear(true);
@@ -50,7 +69,7 @@ export function BottomBar({ onExtract, onManage, activeCategoriaId }: BottomBarP
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-30 pb-safe">
+    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-30" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
       {/* Menú de Unidades (Popup) */}
       {showMenu && (
         <div className="absolute bottom-full right-2 mb-2 w-64 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden z-40">
@@ -73,7 +92,7 @@ export function BottomBar({ onExtract, onManage, activeCategoriaId }: BottomBarP
               <button 
                 onClick={() => {
                   if(window.confirm('¿Estás seguro de querer limpiar TODAS las categorías? Esto pondrá a 0 todos los productos.')) {
-                    clearProductosByCategoria();
+                    clearWithUndo();
                     setShowMenu(false);
                   }
                 }}
@@ -123,6 +142,7 @@ export function BottomBar({ onExtract, onManage, activeCategoriaId }: BottomBarP
 
       <div className="flex items-center justify-between px-2 h-16 max-w-md mx-auto">
         <button
+          type="button"
           onClick={handleClear}
           className={clsx(
             "flex flex-col items-center justify-center w-16 h-full transition-colors",

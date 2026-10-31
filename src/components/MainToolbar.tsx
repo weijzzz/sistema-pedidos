@@ -11,13 +11,15 @@ interface MainToolbarProps {
 
 export function MainToolbar({ searchQuery, setSearchQuery, showOnlyOrders, setShowOnlyOrders }: MainToolbarProps) {
   return (
-    <div className="sticky top-[49px] z-10 bg-white border-b border-gray-200 px-3 py-2 shadow-sm flex gap-2">
+    <div className="shrink-0 z-10 bg-white border-b border-gray-200 px-3 py-2 shadow-sm flex gap-2">
       <div className="relative flex-1">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
           <Search className="h-4 w-4 text-gray-400" />
         </div>
         <input
-          type="text"
+          type="search"
+          enterKeyHint="search"
+          aria-label="Buscar producto"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Buscar producto..."
@@ -25,8 +27,10 @@ export function MainToolbar({ searchQuery, setSearchQuery, showOnlyOrders, setSh
         />
         {searchQuery && (
           <button
+            type="button"
+            aria-label="Borrar búsqueda"
             onClick={() => setSearchQuery('')}
-            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+            className="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 hover:text-gray-600 text-lg"
           >
             ×
           </button>
@@ -34,6 +38,8 @@ export function MainToolbar({ searchQuery, setSearchQuery, showOnlyOrders, setSh
       </div>
       
       <button
+        type="button"
+        aria-pressed={showOnlyOrders}
         onClick={() => setShowOnlyOrders(!showOnlyOrders)}
         className={clsx(
           "flex items-center justify-center px-3 py-2 border rounded-lg text-sm font-medium transition-colors",

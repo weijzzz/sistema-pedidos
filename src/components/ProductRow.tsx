@@ -10,29 +10,28 @@ interface ProductRowProps {
   unidadPorDefecto: string;
 }
 
-export function ProductRow({ producto, unidadPorDefecto }: ProductRowProps) {
-  const { updateProductoCantidad, toggleProductoUnidad, setProductoUnidad, ajustes } = useStore();
-  const unidadesDisponibles = ajustes.unidadesDisponibles;
+export const ProductRow = React.memo(function ProductRow({ producto, unidadPorDefecto }: ProductRowProps) {
+  // Individual selectors: a row only re-renders when its own data changes,
+  // not on every tap anywhere in the list.
+  const updateProductoCantidad = useStore((s) => s.updateProductoCantidad);
+  const stepProductoCantidad = useStore((s) => s.stepProductoCantidad);
+  const toggleProductoUnidad = useStore((s) => s.toggleProductoUnidad);
+  const setProductoUnidad = useStore((s) => s.setProductoUnidad);
+  const unidadesDisponibles = useStore((s) => s.ajustes.unidadesDisponibles);
   
   const step = producto.unidad === 'kg' ? 0.5 : 1;
   const isSelected = producto.cantidad !== 0 && producto.cantidad !== '';
   
-  const getCurrentNum = () => {
-    if (typeof producto.cantidad === 'number') return producto.cantidad;
-    const parsed = parseFloat(producto.cantidad);
-    return isNaN(parsed) ? 0 : parsed;
-  };
-
+  // The store reads the current quantity itself, so holding the button keeps
+  // counting instead of repeating the value from when the press started.
   const handleIncrement = useCallback(() => {
-    updateProductoCantidad(producto.id, getCurrentNum() + step);
-  }, [producto.id, producto.cantidad, step, updateProductoCantidad]);
+    stepProductoCantidad(producto.id, step);
+    navigator.vibrate?.(8);
+  }, [producto.id, step, stepProductoCantidad]);
 
   const handleDecrement = useCallback(() => {
-    const current = getCurrentNum();
-    if (current > 0 || typeof producto.cantidad === 'string') {
-      updateProductoCantidad(producto.id, Math.max(0, current - step));
-    }
-  }, [producto.id, producto.cantidad, step, updateProductoCantidad]);
+    stepProductoCantidad(producto.id, -step);
+  }, [producto.id, step, stepProductoCantidad]);
 
   const incrementPress = useLongPress(handleIncrement, 400, 100);
   const decrementPress = useLongPress(handleDecrement, 400, 100);
@@ -68,6 +67,7 @@ export function ProductRow({ producto, unidadPorDefecto }: ProductRowProps) {
         <div className="mt-1.5 flex items-center">
           {!producto.mostrarUnidad ? (
             <button
+              type="button"
               onClick={() => toggleProductoUnidad(producto.id, unidadPorDefecto)}
               className="inline-flex items-center justify-center h-6 px-3 rounded-full border border-gray-300 text-gray-500 text-xs hover:bg-gray-100 transition-colors font-medium shadow-sm"
             >
@@ -87,6 +87,8 @@ export function ProductRow({ producto, unidadPorDefecto }: ProductRowProps) {
                 ))}
               </select>
               <button
+                type="button"
+                aria-label="Quitar unidad"
                 onClick={() => toggleProductoUnidad(producto.id, unidadPorDefecto)}
                 className="relative z-10 flex items-center justify-center h-5 w-5 ml-0.5 rounded-full hover:bg-blue-200 transition-colors text-blue-600"
               >
@@ -100,7 +102,9 @@ export function ProductRow({ producto, unidadPorDefecto }: ProductRowProps) {
       {/* Controles de Cantidad */}
       <div className="flex items-center bg-gray-100 rounded-lg overflow-hidden h-10 shadow-sm border border-gray-200 shrink-0 ml-2">
         <button
+          type="button"
           {...decrementPress}
+          aria-label={`Quitar ${producto.nombre}`}
           disabled={producto.cantidad === 0}
           className="w-11 h-full flex items-center justify-center bg-gray-50 active:bg-gray-200 disabled:opacity-30 disabled:active:bg-gray-50 transition-colors touch-manipulation"
         >
@@ -110,6 +114,9 @@ export function ProductRow({ producto, unidadPorDefecto }: ProductRowProps) {
           <input
             type="text"
             inputMode="text"
+            enterKeyHint="done"
+            aria-label={`Cantidad de ${producto.nombre}`}
+            onFocus={(e) => e.target.select()}
             value={producto.cantidad === 0 ? '' : producto.cantidad}
             onChange={handleInputChange}
             placeholder="0"
@@ -120,7 +127,9 @@ export function ProductRow({ producto, unidadPorDefecto }: ProductRowProps) {
           />
         </div>
         <button
+          type="button"
           {...incrementPress}
+          aria-label={`Añadir ${producto.nombre}`}
           className="w-11 h-full flex items-center justify-center bg-gray-50 active:bg-gray-200 transition-colors touch-manipulation"
         >
           <Plus className="w-5 h-5 text-gray-700" />
@@ -128,4 +137,4 @@ export function ProductRow({ producto, unidadPorDefecto }: ProductRowProps) {
       </div>
     </div>
   );
-}
+});
