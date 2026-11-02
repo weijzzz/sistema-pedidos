@@ -65,6 +65,17 @@ export function compareNombre(a: string, b: string): number {
   return collator.compare(a, b);
 }
 
+/**
+ * «Ordenar en lote»: the products tapped (in tap order) go first, the rest
+ * keep their current relative order behind them. Unknown ids are ignored.
+ */
+export function pickedFirst(ids: string[], picked: string[]): string[] {
+  const inGroup = new Set(ids);
+  const first = picked.filter((id, i) => inGroup.has(id) && picked.indexOf(id) === i);
+  const chosen = new Set(first);
+  return [...first, ...ids.filter((id) => !chosen.has(id))];
+}
+
 export function moveId(ids: string[], from: number, to: number): string[] {
   if (from === to || from < 0 || to < 0 || from >= ids.length || to >= ids.length) return ids;
   const next = [...ids];
