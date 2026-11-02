@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyOrder, moveId, nextOrden, normalizeOrden } from './order';
+import { applyOrder, moveId, nextOrden, normalizeOrden, pickedFirst } from './order';
 import type { Producto } from '../types';
 
 const p = (id: string, orden: number, subgrupoId?: string, categoriaId = 'c1'): Producto => ({
@@ -54,5 +54,22 @@ describe('ordering helpers', () => {
   it('moveId moves within bounds', () => {
     expect(moveId(['a', 'b', 'c'], 2, 0)).toEqual(['c', 'a', 'b']);
     expect(moveId(['a', 'b'], 0, 5)).toEqual(['a', 'b']);
+  });
+});
+
+describe('pickedFirst', () => {
+  const ids = ['a', 'b', 'c', 'd', 'e'];
+
+  it('puts the tapped products first, in tap order, and keeps the rest behind', () => {
+    expect(pickedFirst(ids, ['d', 'a'])).toEqual(['d', 'a', 'b', 'c', 'e']);
+  });
+
+  it('tapping every product gives exactly that order', () => {
+    expect(pickedFirst(ids, ['e', 'd', 'c', 'b', 'a'])).toEqual(['e', 'd', 'c', 'b', 'a']);
+  });
+
+  it('nothing tapped changes nothing; unknown or repeated ids are ignored', () => {
+    expect(pickedFirst(ids, [])).toEqual(ids);
+    expect(pickedFirst(ids, ['x', 'c', 'c'])).toEqual(['c', 'a', 'b', 'd', 'e']);
   });
 });

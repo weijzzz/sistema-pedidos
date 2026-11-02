@@ -1,10 +1,12 @@
-import React, { useMemo, useState } from 'react';
-import { ArrowDownAZ, Plus, Search, Trash2, X } from 'lucide-react';
+import React, { useCallback, useMemo, useState } from 'react';
+import { ArrowDownAZ, ListOrdered, Plus, Search, Trash2, Undo2, X } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useStore } from '../store/useStore';
 import { SortableList } from '../components/SortableList';
-import { compareNombre, sortByOrden } from '../lib/order';
+import { UndoToast, type UndoInfo } from '../components/UndoToast';
+import { compareNombre, pickedFirst, sortByOrden } from '../lib/order';
 import { normalizeString } from '../utils/normalize';
+import { useBackButton } from '../utils/useBackButton';
 import type { Producto, Subgrupo } from '../types';
 
 const NO_SUB = '__none__';
@@ -16,6 +18,9 @@ export function ManageProducts() {
   const [query, setQuery] = useState('');
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [batchKey, setBatchKey] = useState<string | null>(null);
+  const [undo, setUndo] = useState<UndoInfo | null>(null);
+  const clearUndo = useCallback(() => setUndo(null), []);
 
   const activeCatId = sortedCats.some((c) => c.id === catId) ? catId : sortedCats[0]?.id || '';
   const catSubgrupos = useMemo(
@@ -44,6 +49,23 @@ export function ManageProducts() {
   const sortGroupAZ = (items: Producto[]) => {
     reorderProductos([...items].sort((a, b) => compareNombre(a.nombre, b.nombre)).map((p) => p.id));
   };
+
+  const batchGroup = batchKey ? groups.find((g) => g.key === batchKey) : undefined;
+  if (batchGroup) {
+    return (
+      <BatchSorter
+        title={batchGroup.title}
+        items={batchGroup.items}
+        onCancel={() => setBatchKey(null)}
+        onApply={(picked) => {
+          const before = batchGroup.items.map((p) => p.id);
+          reorderProductos(pickedFirst(before, picked));
+          setBatchKey(null);
+          setUndo({ message: `Orden aplicado (${picked.length} primero)`, onUndo: () => reorderProductos(before) });
+        }}
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-full">
@@ -119,7 +141,8 @@ export function ManageProducts() {
         ) : (
           <>
             <p className="text-xs text-gray-500 text-center">
-              Arrastra con <span className="font-bold">≡</span> o usa las flechas. El orden es el mismo de la lista y del pedido.
+              Arrastra con <span className="font-bold">≡</span>, usa las flechas o <span className="font-bold">En lote</span> para
+              ordenar varios tocándolos. El orden es el mismo de la lista y del pedido.
             </p>
             {groups.map((g) => (
               <section key={g.key} aria-label={g.title}>
@@ -127,14 +150,29 @@ export function ManageProducts() {
                   <h3 className="text-xs font-bold uppercase tracking-wider text-gray-600">{g.title}</h3>
                   <span className="text-xs text-gray-400">{g.items.length}</span>
                   {g.items.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => sortGroupAZ(g.items)}
-                      className="ml-auto flex items-center gap-1 text-xs font-semibold text-blue-600 px-2 py-1 rounded-md active:bg-blue-50"
-                    >
-                      <ArrowDownAZ className="w-4 h-4" />
-                      Ordenar A→Z
-                    </button>
+                    <div className="ml-auto flex shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingId(null);
+                          setBatchKey(g.key);
+                        }}
+                        aria-label={`Ordenar en lote ${g.title}`}
+                        className="flex items-center gap-1 text-xs font-semibold text-blue-600 px-2 py-1.5 rounded-md active:bg-blue-50"
+                      >
+                        <ListOrdered className="w-4 h-4" />
+                        En lote
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => sortGroupAZ(g.items)}
+                        aria-label={`Ordenar A→Z ${g.title}`}
+                        className="flex items-center gap-1 text-xs font-semibold text-blue-600 px-2 py-1.5 rounded-md active:bg-blue-50"
+                      >
+                        <ArrowDownAZ className="w-4 h-4" />
+                        A→Z
+                      </button>
+                    </div>
                   )}
                 </div>
                 {g.items.length === 0 ? (
@@ -161,6 +199,110 @@ export function ManageProducts() {
             ))}
           </>
         )}
+      </div>
+      <UndoToast info={undo} onClose={clearUndo} />
+    </div>
+  );
+}
+
+/**
+ * «Ordenar en lote»: tap the products in the order you want. Tapped ones get
+ * 1, 2, 3… and go first; the rest stay behind in their current order. Rows
+ * don't move while tapping (nothing jumps under the finger).
+ */
+function BatchSorter({
+  title,
+  items,
+  onCancel,
+  onApply,
+}: {
+  title: string;
+  items: Producto[];
+  onCancel: () => void;
+  onApply: (picked: string[]) => void;
+}) {
+  const [picked, setPicked] = useState<string[]>([]);
+  useBackButton(true, onCancel, 'lote');
+  const toggle = (id: string) => setPicked((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
+  const rest = items.length - picked.length;
+
+  return (
+    <div className="flex flex-col min-h-full">
+      <div className="sticky top-0 z-10 bg-blue-600 text-white px-4 py-3 shadow">
+        <p className="font-bold">Ordenar en lote · {title}</p>
+        <p className="text-xs text-blue-100 mt-0.5">
+          Toca los productos en el orden que quieras. Los tocados van primero; el resto se queda detrás en su orden actual.
+          Toca otra vez para quitar.
+        </p>
+      </div>
+
+      <ul className="flex-1 p-3 flex flex-col gap-1.5" aria-label={`Productos de ${title}`}>
+        {items.map((p) => {
+          const n = picked.indexOf(p.id) + 1;
+          return (
+            <li key={p.id}>
+              <button
+                type="button"
+                onClick={() => toggle(p.id)}
+                aria-pressed={n > 0}
+                className={clsx(
+                  'w-full min-h-[52px] flex items-center gap-3 rounded-xl border px-3 py-2 text-left transition-colors',
+                  n > 0 ? 'bg-blue-50 border-blue-400' : 'bg-white border-gray-200 shadow-sm active:bg-gray-50'
+                )}
+              >
+                <span
+                  className={clsx(
+                    'shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold',
+                    n > 0 ? 'bg-blue-600 text-white' : 'border-2 border-gray-300 text-transparent'
+                  )}
+                  aria-hidden="true"
+                >
+                  {n > 0 ? n : '·'}
+                </span>
+                <span className="min-w-0">
+                  <span className={clsx('block text-sm font-semibold truncate', n > 0 ? 'text-blue-900' : 'text-gray-800')}>
+                    {p.nombre}
+                  </span>
+                  {(p.mostrarUnidad || p.notas) && (
+                    <span className="block text-xs text-gray-400 truncate">
+                      {[p.mostrarUnidad ? p.unidad : null, p.notas].filter(Boolean).join(' · ')}
+                    </span>
+                  )}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+
+      <div className="sticky bottom-0 z-10 bg-white border-t border-gray-200 px-3 pt-2 pb-safe shadow-[0_-2px_8px_rgba(0,0,0,0.06)]">
+        <p className="text-xs text-gray-500 text-center pb-2" aria-live="polite">
+          {picked.length === 0
+            ? 'Toca el que quieras en 1.º lugar'
+            : `${picked.length} elegido(s) primero · ${rest} detrás en su orden actual`}
+        </p>
+        <div className="flex gap-2 pb-2">
+          <button type="button" onClick={onCancel} className="px-4 py-3 rounded-xl text-sm font-semibold text-gray-600 bg-gray-100 active:bg-gray-200">
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={() => setPicked((cur) => cur.slice(0, -1))}
+            disabled={picked.length === 0}
+            aria-label="Quitar el último"
+            className="px-3 py-3 rounded-xl text-gray-600 bg-gray-100 active:bg-gray-200 disabled:opacity-30"
+          >
+            <Undo2 className="w-5 h-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onApply(picked)}
+            disabled={picked.length === 0}
+            className="flex-1 py-3 rounded-xl text-sm font-bold text-white bg-blue-600 active:bg-blue-700 disabled:opacity-40"
+          >
+            Aplicar orden{picked.length > 0 ? ` (${picked.length})` : ''}
+          </button>
+        </div>
       </div>
     </div>
   );
